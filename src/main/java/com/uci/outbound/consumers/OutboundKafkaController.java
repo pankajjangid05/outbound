@@ -67,7 +67,13 @@ public class OutboundKafkaController {
                             HashMap<String, String> attachments = new HashMap<>();
                             attachments.put("Exception", ExceptionUtils.getStackTrace(e));
                             attachments.put("XMessage", currentXmsg.toString());
-                            sentEmail(currentXmsg, "Error in Outbound", "PFA", recipient, null, attachments);
+                            XMessage cloneXMessage = currentXmsg;
+                            new Thread() {
+                                @Override
+                                public void run() {
+                                    sentEmail(cloneXMessage, "Error in Outbound", "PFA", recipient, null, attachments);
+                                }
+                            }.start();
                             log.error("An Error Occored : " + e.getMessage());
                         }
                     }
@@ -77,7 +83,12 @@ public class OutboundKafkaController {
                     public void accept(Throwable e) {
                         HashMap<String, String> attachments = new HashMap<>();
                         attachments.put("Exception", ExceptionUtils.getStackTrace(e));
-                        sentEmail(null, "Error in Outbound", "PFA", recipient, null, attachments);
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                sentEmail(null, "Error in Outbound", "PFA", recipient, null, attachments);
+                            }
+                        }).start();
                         log.error("KafkaFlux exception", e.getMessage());
                     }
                 })
@@ -101,8 +112,15 @@ public class OutboundKafkaController {
                         HashMap<String, String> attachments = new HashMap<>();
                         attachments.put("Exception", ExceptionUtils.getStackTrace(e));
                         attachments.put("XMessage", currentXmsg.toString());
-                        sentEmail(currentXmsg, "Error in Outbound", "PFA", recipient, null, attachments);
+                        XMessage cloneXMessage = currentXmsg;
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                sentEmail(cloneXMessage, "Error in Outbound", "PFA", recipient, null, attachments);
+                            }
+                        }).start();
                         log.error("Exception in processOutBoundMessageF:" + e.getMessage());
+                        e.printStackTrace();
                     }
                 }).subscribe(new Consumer<XMessage>() {
                     @Override
@@ -130,9 +148,15 @@ public class OutboundKafkaController {
                             } catch (Exception e) {
                                 HashMap<String, String> attachments = new HashMap<>();
                                 attachments.put("Exception", ExceptionUtils.getStackTrace(e));
-                                attachments.put("XMessage", currentXmsg.toString());
-                                sentEmail(xMessage, "Error in Outbound", "PFA", recipient, null, attachments);
-                                log.error("Exception in convertXMessageToDAO:" + e.getMessage());
+                                attachments.put("XMessage", xMessage.toString());
+                                XMessage cloneXMessage = xMessage;
+                                new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        sentEmail(cloneXMessage, "Error in Outbound", "PFA", recipient, null, attachments);
+                                    }
+                                }).start();
+                                log.error("Exception in convertXMessageToDAO:" + e.getMessage() + "  User Id : " + xMessage.getTo().getUserID());
                                 try {
                                     log.error("The current XMessage was : " + xMessage.toString());
                                 } catch (Exception ge) {
