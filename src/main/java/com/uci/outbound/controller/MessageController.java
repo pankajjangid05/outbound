@@ -9,6 +9,7 @@ import com.uci.dao.utils.XMessageDAOUtils;
 import com.uci.outbound.consumers.OutboundKafkaController;
 import com.uci.outbound.model.MessageRequest;
 import com.uci.utils.BotService;
+import com.uci.utils.dto.Result;
 import com.uci.utils.model.HttpApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import messagerosa.core.model.*;
@@ -73,9 +74,9 @@ public class MessageController {
             XMessagePayload payload = request.payload;
 
             return botService.getAdapterByID(request.getAdapterId())
-                    .map(new Function<JsonNode, Mono<ResponseEntity<HttpApiResponse>>>(){
+                    .map(new Function<Result, Mono<ResponseEntity<HttpApiResponse>>>(){
                         @Override
-                        public Mono<ResponseEntity<HttpApiResponse>> apply(JsonNode adapter) {
+                        public Mono<ResponseEntity<HttpApiResponse>> apply(Result result) {
                             XMessage xmsg = new XMessage().builder()
                                     .app("Global Outbound Bot")
                                     .adapterId(request.getAdapterId())
@@ -88,8 +89,8 @@ public class MessageController {
                                     .messageState(XMessage.MessageState.REPLIED)
                                     .messageType(XMessage.MessageType.TEXT)
                                     .payload(payload)
-                                    .providerURI(adapter.path("provider").asText())
-                                    .channelURI(adapter.path("channel").asText())
+                                    .providerURI(result.getProvider())
+                                    .channelURI(result.getChannel())
                                     .timestamp(Timestamp.valueOf(LocalDateTime.now()).getTime())
                                     .build();
 
@@ -101,7 +102,7 @@ public class MessageController {
                              * Check for media content allowed for gupshup & netcore whatsapp adapter
                              */
                             if(request.getPayload().getMedia() != null
-                                    && !adapter.path("channel").asText().equalsIgnoreCase("whatsapp")
+                                    && !result.getChannel().equalsIgnoreCase("whatsapp")
                             ) {
                                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                                 response.setError(HttpStatus.BAD_REQUEST.getReasonPhrase());
@@ -110,8 +111,8 @@ public class MessageController {
                             }
 
                             /* Template id required check for cdac sms adapter */
-                            if(adapter.path("channel").asText().equalsIgnoreCase("sms")
-                                    &&  adapter.path("provider").asText().equalsIgnoreCase("cdac")) {
+                            if(result.getChannel().equalsIgnoreCase("sms")
+                                    && result.getProvider().equalsIgnoreCase("cdac")) {
                                 if(request.getTo().getMeta() == null || request.getTo().getMeta().get("templateId") == null || request.getTo().getMeta().get("templateId").isEmpty()) {
                                     response.setStatus(HttpStatus.BAD_REQUEST.value());
                                     response.setError(HttpStatus.BAD_REQUEST.getReasonPhrase());
@@ -129,8 +130,8 @@ public class MessageController {
                             }
 
                             /* FCM token required check for firebase adapter */
-                            if(adapter.path("channel").asText().equalsIgnoreCase("web")
-                                    &&  adapter.path("provider").asText().equalsIgnoreCase("firebase")
+                            if(result.getChannel().equalsIgnoreCase("web")
+                                    && result.getProvider().equalsIgnoreCase("firebase")
                                     && (request.getTo().getMeta() == null || request.getTo().getMeta().get("fcmToken") == null || request.getTo().getMeta().get("fcmToken").isEmpty())) {
                                 response.setStatus(HttpStatus.BAD_REQUEST.value());
                                 response.setError(HttpStatus.BAD_REQUEST.getReasonPhrase());
